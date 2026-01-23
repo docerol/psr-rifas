@@ -145,19 +145,613 @@ Leia [Deployment com Laravel](https://laravel.com/docs/11.x/deployment)
 
 ## Roadmap
 
-- [ ] Utilizar Repositories para realizar busca através dos Models
+# 🗺️ Roadmap - PSR Rifas
 
-- [ ] Integrar o sistema com o mecanismo de busca Meilisearch
+Este documento descreve o planejamento de desenvolvimento do PSR Rifas, incluindo funcionalidades planejadas, melhorias de arquitetura e otimizações.
 
-- [x] Criar uma página para visualização das informações de rifa no painel de controle: número de bilhetes vendidos, gráfico com vendas por data, ranking dos compradores. <sup>Nota 1</sup>
+---
 
-- [ ] Adicionar suporte para desconto por quantidade
+## 📌 Legenda
 
-- [x] Adicionar agendamento para publicação das rifas
+- 🔴 **Crítico** - Problemas de segurança ou bugs graves
+- 🟠 **Alta Prioridade** - Funcionalidades importantes ou melhorias significativas
+- 🟡 **Média Prioridade** - Funcionalidades desejadas
+- 🟢 **Baixa Prioridade** - Melhorias e refinamentos
+- ✅ **Concluído** - Já implementado
+- 🚧 **Em Progresso** - Atualmente em desenvolvimento
+- 📋 **Planejado** - Próximas implementações
+- 💡 **Ideias** - Propostas para análise futura
 
-- [ ] Adicionar outras formas de pagamento
+---
 
-- [ ] Adicionar mecanismo de  análise de código PHP
+## 🎯 Versão Atual: 1.0.0
+
+### ✅ Funcionalidades Implementadas
+
+- [x] Sistema básico de criação de rifas
+- [x] Compra de bilhetes com seleção manual
+- [x] Integração com MercadoPago
+- [x] Painel administrativo com Filament
+- [x] Interface responsiva com Vue 3 + Tailwind
+- [x] Sistema de autenticação
+- [x] Testes automatizados (PHPUnit + Vitest)
+- [x] CI/CD com GitHub Actions
+- [x] Suporte Docker
+
+---
+
+## 🔄 Versão 1.1.0 - Melhorias de Arquitetura (Em Progresso)
+
+### 🔴 Crítico - Segurança e Estabilidade
+
+#### 1. Implementar Transações e Locks Anti-Race Condition
+**Status:** 🚧 Em Progresso  
+**Prioridade:** 🔴 Crítica
+
+**Problema:**
+Múltiplos usuários podem reservar os mesmos bilhetes simultaneamente, causando double-booking.
+
+**Solução:**
+```php
+// Implementar lockForUpdate() nas transações
+DB::transaction(function () {
+    $tickets = Ticket::where('rifa_id', $rifaId)
+        ->whereIn('number', $numbers)
+        ->where('status', 'available')
+        ->lockForUpdate()
+        ->get();
+});
+```
+
+**Tarefas:**
+- [ ] Adicionar locks pessimistas em compras
+- [ ] Implementar retry logic
+- [ ] Criar testes de concorrência
+- [ ] Adicionar logs de conflitos
+- [ ] Documentar comportamento
+
+---
+
+#### 2. Sistema Automatizado de Limpeza de Pedidos Expirados
+**Status:** 📋 Planejado  
+**Prioridade:** 🔴 Crítica
+
+**Problema:**
+Pedidos expirados não são removidos automaticamente, causando acúmulo de dados órfãos.
+
+**Solução:**
+```php
+// Command: CleanExpiredOrders
+php artisan orders:clean-expired
+
+// Schedule: Executar a cada 5 minutos
+$schedule->command('orders:clean-expired')->everyFiveMinutes();
+```
+
+**Tarefas:**
+- [ ] Criar Command CleanExpiredOrders
+- [ ] Implementar lógica de liberação de bilhetes
+- [ ] Configurar schedule no Kernel
+- [ ] Adicionar notificações de expiração
+- [ ] Criar testes automatizados
+- [ ] Adicionar métricas de limpeza
+
+**Estimativa:** 1 semana
+
+---
+
+#### 3. Validação de Webhooks do MercadoPago
+**Status:** 📋 Planejado  
+**Prioridade:** 🔴 Crítica
+
+**Problema:**
+Webhooks não validam assinatura, permitindo requisições maliciosas.
+
+**Solução:**
+```php
+// Middleware: VerifyMercadoPagoSignature
+Route::post('/webhooks/mercadopago', [WebhookController::class, 'handle'])
+    ->middleware('verify.mercadopago.signature');
+```
+
+**Tarefas:**
+- [ ] Criar middleware de validação
+- [ ] Implementar verificação de assinatura
+- [ ] Adicionar rate limiting
+- [ ] Criar logs de tentativas inválidas
+- [ ] Implementar retry automático
+- [ ] Documentar configuração
+
+**Estimativa:** 3 dias
+
+---
+
+### 🟠 Alta Prioridade - Arquitetura
+
+#### 4. Implementar Repository Pattern
+**Status:** 📋 Planejado  
+**Prioridade:** 🟠 Alta
+
+**Objetivo:**
+Desacoplar lógica de negócio da camada de dados, facilitando testes e manutenção.
+
+**Estrutura:**
+```
+app/Repositories/
+├── Contracts/
+│   ├── RifaRepositoryInterface.php
+│   ├── TicketRepositoryInterface.php
+│   └── OrderRepositoryInterface.php
+├── Eloquent/
+│   ├── RifaRepository.php
+│   ├── TicketRepository.php
+│   └── OrderRepository.php
+└── RepositoryServiceProvider.php
+```
+
+**Tarefas:**
+- [ ] Criar interfaces dos repositórios
+- [ ] Implementar repositórios Eloquent
+- [ ] Criar ServiceProvider
+- [ ] Refatorar controllers para usar repositórios
+- [ ] Adicionar cache layer nos repositórios
+- [ ] Criar testes unitários
+- [ ] Documentar padrões de uso
+
+**Estimativa:** 2 semanas
+
+---
+
+#### 5. Service Layer para Lógica de Negócio
+**Status:** 📋 Planejado  
+**Prioridade:** 🟠 Alta
+
+**Objetivo:**
+Centralizar lógica de negócio complexa em services reutilizáveis.
+
+**Services a criar:**
+```
+app/Services/
+├── PaymentService.php        # Processamento de pagamentos
+├── TicketService.php          # Gestão de bilhetes
+├── DrawService.php            # Lógica de sorteios
+├── NotificationService.php    # Envio de notificações
+└── ReportService.php          # Geração de relatórios
+```
+
+**Tarefas:**
+- [ ] Criar PaymentService com MercadoPago
+- [ ] Implementar TicketService
+- [ ] Criar DrawService para sorteios
+- [ ] Desenvolver NotificationService
+- [ ] Implementar ReportService
+- [ ] Adicionar testes de integração
+- [ ] Documentar APIs dos services
+
+**Estimativa:** 2 semanas
+
+---
+
+#### 6. Form Requests com Validação Robusta
+**Status:** 📋 Planejado  
+**Prioridade:** 🟠 Alta
+
+**Objetivo:**
+Substituir validações inline por Form Requests dedicados.
+
+**Requests a criar:**
+```
+app/Http/Requests/
+├── Rifa/
+│   ├── StoreRifaRequest.php
+│   ├── UpdateRifaRequest.php
+│   └── DrawRifaRequest.php
+├── Ticket/
+│   ├── PurchaseTicketRequest.php
+│   └── ReserveTicketRequest.php
+└── Order/
+    ├── ProcessPaymentRequest.php
+    └── CancelOrderRequest.php
+```
+
+**Tarefas:**
+- [ ] Criar Form Requests para todas as operações
+- [ ] Implementar regras de validação customizadas
+- [ ] Adicionar mensagens de erro personalizadas
+- [ ] Implementar authorize() methods
+- [ ] Criar testes de validação
+- [ ] Documentar regras de validação
+
+**Estimativa:** 1 semana
+
+---
+
+### 🟡 Média Prioridade - Funcionalidades
+
+#### 7. Dashboard Analytics Avançado
+**Status:** 📋 Planejado  
+**Prioridade:** 🟡 Média
+
+**Funcionalidades:**
+- Gráfico de vendas por período
+- Ranking de compradores
+- Métricas de conversão
+- Taxa de ocupação de rifas
+- Receita total e projeções
+- Estatísticas de pagamento
+
+**Componentes:**
+```
+resources/js/Pages/Dashboard/
+├── Analytics.vue
+├── Components/
+│   ├── SalesChart.vue
+│   ├── TopBuyers.vue
+│   ├── ConversionMetrics.vue
+│   └── RevenueCard.vue
+└── types/analytics.ts
+```
+
+**Tarefas:**
+- [ ] Criar endpoints de analytics
+- [ ] Implementar cache de métricas
+- [ ] Desenvolver componentes Vue
+- [ ] Adicionar gráficos com Chart.js
+- [ ] Implementar filtros por data
+- [ ] Criar exportação de relatórios
+- [ ] Adicionar testes E2E
+
+**Estimativa:** 3 semanas
+
+---
+
+#### 8. Sistema de Desconto por Quantidade
+**Status:** 📋 Planejado  
+**Prioridade:** 🟡 Média
+
+**Funcionalidades:**
+- Desconto progressivo por quantidade
+- Cupons de desconto
+- Promoções por tempo limitado
+- Desconto para compradores recorrentes
+
+**Estrutura:**
+```sql
+-- Migration: create_discounts_table
+id, rifa_id, type, min_quantity, max_quantity, 
+discount_type, discount_value, valid_from, valid_until
+```
+
+**Tarefas:**
+- [ ] Criar migration de descontos
+- [ ] Implementar lógica de cálculo
+- [ ] Adicionar interface de configuração
+- [ ] Criar validações de cupons
+- [ ] Implementar logs de uso
+- [ ] Adicionar testes de desconto
+- [ ] Documentar tipos de desconto
+
+**Estimativa:** 2 semanas
+
+---
+
+#### 9. Agendamento de Publicação de Rifas
+**Status:** 📋 Planejado  
+**Prioridade:** 🟡 Média
+
+**Funcionalidades:**
+- Agendar data/hora de publicação
+- Agendar data/hora de encerramento
+- Notificações automáticas
+- Rascunhos de rifas
+
+**Implementação:**
+```php
+// Model: Rifa
+published_at, scheduled_at, expires_at
+
+// Job: PublishScheduledRifas
+php artisan rifas:publish-scheduled
+```
+
+**Tarefas:**
+- [ ] Adicionar campos de agendamento
+- [ ] Criar Job de publicação
+- [ ] Implementar notificações
+- [ ] Adicionar interface no Filament
+- [ ] Criar testes de agendamento
+- [ ] Documentar fluxo
+
+**Estimativa:** 1 semana
+
+---
+
+### 🟢 Baixa Prioridade - Otimizações
+
+#### 10. Implementar Cache Estratégico
+**Status:** 📋 Planejado  
+**Prioridade:** 🟢 Baixa
+
+**Áreas de cache:**
+- Lista de rifas ativas (5 minutos)
+- Detalhes de rifa (10 minutos)
+- Contagem de bilhetes (1 minuto)
+- Estatísticas do dashboard (15 minutos)
+
+**Implementação:**
+```php
+// Cache de rifas ativas
+Cache::remember('rifas:active', 300, function () {
+    return Rifa::active()->get();
+});
+
+// Invalidação ao atualizar
+Cache::forget('rifas:active');
+Cache::tags(['rifa:' . $id])->flush();
+```
+
+**Tarefas:**
+- [ ] Implementar cache Redis
+- [ ] Adicionar cache tags
+- [ ] Criar estratégia de invalidação
+- [ ] Implementar cache warming
+- [ ] Adicionar métricas de hit/miss
+- [ ] Documentar estratégias
+
+**Estimativa:** 1 semana
+
+---
+
+#### 11. Otimização de Queries (N+1)
+**Status:** 📋 Planejado  
+**Prioridade:** 🟢 Baixa
+
+**Problemas comuns:**
+```php
+// ❌ N+1 Problem
+$rifas = Rifa::all();
+foreach ($rifas as $rifa) {
+    echo $rifa->user->name; // Query extra
+}
+
+// ✅ Eager Loading
+$rifas = Rifa::with('user')->get();
+```
+
+**Tarefas:**
+- [ ] Identificar queries N+1 com Debugbar
+- [ ] Implementar eager loading
+- [ ] Adicionar withCount() onde necessário
+- [ ] Criar índices no banco
+- [ ] Otimizar queries complexas
+- [ ] Adicionar monitoring de queries lentas
+
+**Estimativa:** 1 semana
+
+---
+
+#### 12. Integração com Meilisearch
+**Status:** 💡 Ideia  
+**Prioridade:** 🟢 Baixa
+
+**Funcionalidades:**
+- Busca full-text em rifas
+- Filtros avançados
+- Busca por tags
+- Autocomplete
+
+**Tarefas:**
+- [ ] Configurar Meilisearch
+- [ ] Implementar Laravel Scout
+- [ ] Criar índices de busca
+- [ ] Desenvolver interface de busca
+- [ ] Adicionar filtros facetados
+- [ ] Implementar sugestões
+
+**Estimativa:** 2 semanas
+
+---
+
+## 🚀 Versão 2.0.0 - Recursos Avançados
+
+### Planejado para Q2 2026
+
+#### 13. Sistema Multi-tenant
+**Status:** 💡 Ideia  
+**Prioridade:** 🟡 Média
+
+**Funcionalidades:**
+- Múltiplos organizadores
+- Domínios personalizados
+- Temas customizáveis
+- Gestão de permissões
+- Billing por organizador
+
+**Estimativa:** 2 meses
+
+---
+
+#### 14. Outras Formas de Pagamento
+**Status:** 💡 Ideia  
+**Prioridade:** 🟡 Média
+
+**Integrações planejadas:**
+- Pix direto (QR Code)
+- PayPal
+- Stripe
+- PagSeguro
+- Carteira digital
+
+**Estimativa:** 1 mês por gateway
+
+---
+
+#### 15. Sistema de Afiliados
+**Status:** 💡 Ideia  
+**Prioridade:** 🟢 Baixa
+
+**Funcionalidades:**
+- Links de afiliados
+- Comissões configuráveis
+- Dashboard de afiliados
+- Pagamento automático
+- Relatórios de conversão
+
+**Estimativa:** 1 mês
+
+---
+
+#### 16. App Mobile (React Native)
+**Status:** 💡 Ideia  
+**Prioridade:** 🟢 Baixa
+
+**Funcionalidades:**
+- Notificações push
+- Compra rápida
+- QR Code scanner
+- Compartilhamento social
+- Modo offline
+
+**Estimativa:** 3 meses
+
+---
+
+#### 17. Transmissão ao Vivo de Sorteios
+**Status:** 💡 Ideia  
+**Prioridade:** 🟢 Baixa
+
+**Funcionalidades:**
+- Streaming via WebRTC
+- Chat ao vivo
+- Sorteio com animação
+- Gravação automática
+- Compartilhamento social
+
+**Estimativa:** 1 mês
+
+---
+
+## 🛠️ Melhorias Técnicas Contínuas
+
+### Infraestrutura
+
+- [ ] Implementar monitoring com Sentry
+- [ ] Configurar APM com New Relic
+- [ ] Adicionar health checks
+- [ ] Implementar circuit breaker
+- [ ] Configurar CDN para assets
+- [ ] Implementar backup automático
+- [ ] Configurar disaster recovery
+
+### Qualidade de Código
+
+- [ ] Aumentar cobertura de testes para 80%+
+- [ ] Implementar análise estática com PHPStan (level 8)
+- [ ] Adicionar mutation testing
+- [ ] Configurar pre-commit hooks
+- [ ] Implementar code review automático
+- [ ] Adicionar performance testing
+
+### Documentação
+
+- [ ] Criar documentação de API (OpenAPI)
+- [ ] Escrever guias de contribuição detalhados
+- [ ] Criar tutoriais em vídeo
+- [ ] Documentar arquitetura da aplicação
+- [ ] Criar changelog automatizado
+- [ ] Adicionar exemplos de uso
+
+### DevOps
+
+- [ ] Implementar blue-green deployment
+- [ ] Configurar rollback automático
+- [ ] Adicionar smoke tests
+- [ ] Implementar feature flags
+- [ ] Configurar staging environment
+- [ ] Automatizar deploys
+
+---
+
+## 📊 Métricas de Sucesso
+
+### KPIs Técnicos
+
+- **Tempo de resposta:** < 200ms (p95)
+- **Disponibilidade:** > 99.9%
+- **Cobertura de testes:** > 80%
+- **Security score:** A+
+- **Performance score:** > 90
+- **Zero critical bugs** em produção
+
+### KPIs de Negócio
+
+- **Taxa de conversão:** > 5%
+- **Tempo médio de compra:** < 3 minutos
+- **NPS:** > 50
+- **Churn rate:** < 5%
+- **Crescimento mensal:** > 10%
+
+---
+
+## 🤝 Como Contribuir com o Roadmap
+
+1. Abra uma [Discussion](https://github.com/docerol/psr-rifas/discussions) para propor novas funcionalidades
+2. Vote em funcionalidades existentes
+3. Comente com sugestões e melhorias
+4. Submeta Pull Requests para itens do roadmap
+
+---
+
+## 📅 Cronograma Estimado
+
+```mermaid
+gantt
+    title PSR Rifas - Roadmap 2026
+    dateFormat  YYYY-MM-DD
+    section v1.1.0
+    Transações e Locks       :crit, 2026-01-24, 7d
+    Limpeza Automática       :crit, 2026-01-31, 7d
+    Validação Webhooks       :crit, 2026-02-07, 3d
+    Repository Pattern       :     2026-02-10, 14d
+    Service Layer            :     2026-02-24, 14d
+    
+    section v1.2.0
+    Dashboard Analytics      :     2026-03-10, 21d
+    Sistema de Desconto      :     2026-03-31, 14d
+    
+    section v2.0.0
+    Sistema Multi-tenant     :     2026-05-01, 60d
+    App Mobile              :     2026-07-01, 90d
+```
+
+---
+
+## 📝 Notas
+
+- Este roadmap é um documento vivo e será atualizado regularmente
+- As datas são estimativas e podem mudar baseado em prioridades
+- Funcionalidades podem ser adicionadas ou removidas conforme necessário
+- Contribuições da comunidade podem acelerar o desenvolvimento
+
+---
+
+## 📞 Feedback
+
+Tem sugestões para o roadmap? Abra uma issue ou discussion:
+
+- 💡 [Propor nova funcionalidade](https://github.com/docerol/psr-rifas/issues/new?template=feature_request.md)
+- 🐛 [Reportar bug](https://github.com/docerol/psr-rifas/issues/new?template=bug_report.md)
+- 💬 [Discussão geral](https://github.com/docerol/psr-rifas/discussions)
+
+---
+
+<div align="center">
+
+**Última atualização:** Janeiro 2026
+
+**[⬆ Voltar ao topo](#️-roadmap---psr-rifas)**
+
+</div>
 
 ## Aprendizados
 
