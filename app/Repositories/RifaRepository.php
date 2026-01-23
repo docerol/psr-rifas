@@ -6,8 +6,9 @@ use App\Models\Rifa;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Pagination\LengthAwarePaginator;
 
-class RifaRepository
+class RifaRepository implements RifaRepositoryInterface
 {
     public function __construct(protected Rifa $model) {}
 
@@ -19,21 +20,42 @@ class RifaRepository
         return $this->model->lockForUpdate()->find($id);
     }
 
-    /**
-     * Busca rifas com base em filtros e ordenação
-     *
-     * @param array $filters
-     * @param string $sortField
-     * @param string $sortOrder
-     * @param int $perPage
-     * @return \Illuminate\Pagination\LengthAwarePaginator
-     */
+    public function findById(int $id): ?Rifa
+    {
+        return $this->model->with(['tickets', 'winner'])->find($id);
+    }
+
+    public function getActive(): Collection
+    {
+        return $this->model->where('status', 'active')
+            ->where('draw_date', '>', now())
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    public function getBySlug(string $slug): ?Rifa
+    {
+        return $this->model->where('slug', $slug)
+            ->with(['tickets' => function($query) {
+                $query->where('status', 'available');
+            }])
+            ->first();
+    }
+
+    public function getAvailableTickets(int $rifaId): Collection
+    {
+        return $this->model->findOrFail($rifaId)
+            ->tickets()
+            ->where('status', 'available')
+            ->get();
+    }
+
     public function search(
         array $filters = [],
         string $sortField = 'created_at',
         string $sortOrder = 'desc',
         int $perPage = 15
-    ) {
+    ): LengthAwarePaginator {
         $query = $this->model->newQuery();
 
         // Aplica filtros
@@ -73,15 +95,14 @@ class RifaRepository
             ->get();
     }
 
-    /**
-     * Busca uma rifa pelo slug com suas relações
-     */
     public function findBySlug(string $slug, array $relations = []): ?Rifa
     {
         return $this->model->with($relations)
             ->where('slug', $slug)
             ->first();
     }
+    
+    public function __construct(protected Rifa $model) {}
 
     /**
      * Atualiza o ranking de compradores de uma rifa

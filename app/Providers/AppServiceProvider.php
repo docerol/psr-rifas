@@ -8,6 +8,7 @@ use App\Models\Rifa;
 use App\Repositories\OrderRepository;
 use App\Repositories\PaymentRepository;
 use App\Repositories\RifaRepository;
+use App\Repositories\RifaRepositoryInterface;
 use App\Services\MercadoPago as MercadoPagoService;
 use App\Services\OrderService;
 use App\Services\PaymentService;
@@ -30,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
             return new PaymentRepository(new Payment());
         });
 
-        $this->app->bind(RifaRepository::class, function ($app) {
+        $this->app->bind(RifaRepositoryInterface::class, function ($app) {
             return new RifaRepository(new Rifa());
         });
 

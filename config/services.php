@@ -31,4 +31,11 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'mercadopago' => [
+        'access_token' => env('MERCADOPAGO_ACCESS_TOKEN'),
+        'public_key' => env('MERCADOPAGO_PUBLIC_KEY'),
+        'webhook_secret' => env('MERCADOPAGO_WEBHOOK_SECRET'),
+        'base_uri' => 'https://api.mercadopago.com',
+    ],
+
 ];

@@ -34,19 +34,23 @@ declare type Ranking = {
   total_numbers: number;
 };
 
-declare type Rifa = {
+declare interface Rifa {
   id: number;
   title: string;
   thumbnail: string;
-  price: number;
+  ticket_price: number;
+  price: number; // Mantendo para compatibilidade
   description: string;
   slug: string;
-  total_numbers_available: number;
+  total_tickets: number;
+  total_numbers_available: number; // Mantendo para compatibilidade
+  available_tickets: number;
   buy_max: number;
   buy_min: number;
   raffle: string;
-  status: 'draft' | 'published' | 'finished';
+  status: 'draft' | 'published' | 'finished' | 'active' | 'completed' | 'cancelled';
   ranking_buyer: boolean;
+  draw_date: string;
   expired_at: string | null;
   created_at: string;
   updated_at: string;
@@ -78,3 +82,9 @@ declare type Testimonial = {
   testimonial: string;
   order: Pick<Order, 'customer_fullname'>;
 };
+
+// Função para buscar uma rifa
+declare function fetchRifa(id: number): Promise<Rifa>;
+
+export type { Order, Payment, OrderWithPayment, OrderStatuses, Ranking, Rifa, FormReserveNumbers, Slideshow, Winner, Testimonial };
+export { fetchRifa };

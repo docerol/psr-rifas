@@ -144,4 +144,54 @@ class PaymentService
     {
         return $this->paymentRepository->findWithRelations($id, $relations);
     }
+
+    /**
+     * Processa um pagamento para um pedido
+     *
+     * @param Order $order
+     * @return array
+     * @throws \Exception
+     */
+    public function processPayment(Order $order): array
+    {
+        try {
+            Log::info('Iniciando processamento de pagamento', [
+                'order_id' => $order->id,
+                'amount' => $order->total,
+                'user_id' => $order->user_id,
+                'rifa_id' => $order->rifa_id,
+            ]);
+            
+            $response = $this->mercadoPagoService->createPayment([
+                'transaction_amount' => $order->total,
+                'description' => "Rifa #{$order->rifa_id}",
+                'payment_method_id' => $order->payment_method,
+                'payer' => [
+                    'email' => $order->user->email,
+                ],
+            ]);
+            
+            Log::info('Pagamento processado com sucesso', [
+                'order_id' => $order->id,
+                'payment_id' => $response['id'] ?? null,
+                'status' => $response['status'] ?? null,
+            ]);
+            
+            return $response;
+            
+        } catch (\Exception $e) {
+            Log::error('Erro ao processar pagamento', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'context' => [
+                    'rifa_id' => $order->rifa_id,
+                    'user_id' => $order->user_id,
+                    'amount' => $order->total,
+                ]
+            ]);
+            
+            throw $e;
+        }
+    }
 }
